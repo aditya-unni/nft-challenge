@@ -1,21 +1,47 @@
-import React from 'react'
-import { ConnectWallet, useAddress, useDisconnect, useMetamask } from "@thirdweb-dev/react";
+import React, { useEffect, useState } from 'react'
+import { ConnectWallet, useAddress, useContract, useDisconnect, useMetamask, } from "@thirdweb-dev/react";
 import { GetServerSideProps } from 'next';
 import { sanityClient, urlFor } from '../../sanity';
 import { Collection } from '../../typings';
 import Link from 'next/link';
+import { BigNumber } from 'ethers';
 
 interface Props {
     collection: Collection
 }
 
 function NFTDropPage({ collection }: Props) {
+    const [claimedSupply, setClaimedSupply] = useState<number>(0);
+    const [totalSupply, setTotalSupply] = useState<BigNumber>();
+    
+    const {contract} = useContract(collection.address, "nft-drop");
+    
+   console.log(contract)
+
     //auth
     const connectWithMetamask = useMetamask()
     const address = useAddress()
     const disconnect = useDisconnect()
 
-    console.log(address)
+    useEffect(() => {
+        if (!contract) return;
+        const fetchNftDropData = async () => {
+            try {
+                const claimed = await contract.getAllClaimed();
+                const total = await contract.totalSupply();
+                
+                console.log(claimed)
+                console.log(total)
+                setClaimedSupply(claimed.length);
+                setTotalSupply(total)
+            }
+            catch (error) {
+                console.log(error)
+            }
+        }
+        fetchNftDropData();
+    }, [contract])
+
 
     return (
         <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
@@ -53,7 +79,7 @@ function NFTDropPage({ collection }: Props) {
                 <div className="mt-10 flex flex-1 flex-col items-center space-y-6 text-center lg:space-y-0">
                     <img className="w-80 object-cover pb-10 lg:h-40" src={urlFor(collection.mainImage).url()} alt=""></img>
                     <h1 className="text-3xl font-bold lg:text-5xl lg:font-extrabold">{collection.title}</h1>
-                    <p className="pt-2 text-xl text-green-500">13/21 NFTs claimed</p>
+                    <p className="pt-2 text-xl text-green-500">{claimedSupply}/{totalSupply?.toString()} NFTs claimed</p>
                 </div>
 
                 {/* Mint Button */}
